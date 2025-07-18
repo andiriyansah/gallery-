@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Gambar Instan</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- QR Code Library - Menggunakan CDN yang berbeda untuk keandalan yang lebih baik -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 1rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+            padding: 2.5rem; /* p-10 */
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        #qrcode canvas {
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #e2e8f0; /* border-gray-200 */
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+        .image-display-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .image-display-container img {
+            max-width: 90%;
+            max-height: 80vh;
+            border: 5px solid #cbd5e0; /* border-gray-300 */
+            border-radius: 1rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+            object-fit: contain; /* Ensure image fits without cropping */
+        }
+        .placeholder-text {
+            font-size: 1.5rem; /* text-2xl */
+            color: #64748b; /* text-gray-500 */
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- QR Code Generator Section -->
+    <div id="qrGeneratorSection" class="container hidden">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Buat QR Code Gambar Instan</h1>
+
+        <p class="text-gray-600 mb-4">
+            Untuk menampilkan gambar langsung saat QR Code dipindai, gambar Anda harus dihosting di tempat yang dapat diakses publik.
+            <strong class="text-blue-600">Kami merekomendasikan GitHub Pages!</strong>
+        </p>
+
+        <ol class="text-left text-sm text-gray-700 mb-6 list-decimal list-inside">
+            <li>
+                <strong class="font-semibold">Unggah Gambar ke GitHub:</strong> Buat repository GitHub baru (misal: `my-images-repo`). Unggah gambar Anda ke dalamnya (misal: ke folder `images/`).
+            </li>
+            <li>
+                <strong class="font-semibold">Aktifkan GitHub Pages:</strong> Di pengaturan repository Anda, aktifkan GitHub Pages dari branch `main` (atau `master`) dan pilih folder `/(root)`.
+            </li>
+            <li>
+                <strong class="font-semibold">Dapatkan URL Gambar dari GitHub Pages:</strong> Setelah di-deploy, URL publik gambar Anda akan terlihat seperti:
+                <code class="block bg-gray-100 p-2 rounded mt-1 text-xs break-all">https://YOUR_USERNAME.github.io/my-images-repo/images/nama-gambar-anda.jpg</code>
+                <strong class="text-red-500">Hindari penggunaan tautan `raw.githubusercontent.com` untuk gambar yang akan di-QR-kan, karena dapat menyebabkan masalah.</strong>
+            </li>
+            <li>
+                <strong class="font-semibold">Tempel URL di Bawah:</strong> Salin URL gambar publik Anda (dari GitHub Pages) dan tempelkan di kolom di bawah ini.
+            </li>
+        </ol>
+
+        <div class="mb-4">
+            <input type="text" id="imageUrlInput" placeholder="Tempel URL Gambar Publik Anda di sini (dari GitHub Pages)"
+                   class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button onclick="generateQRCode()"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+            Buat QR Code
+        </button>
+
+        <div id="qrcode" class="mt-8 flex justify-center"></div>
+
+        <p class="text-sm text-gray-500 mt-6">
+            <strong class="text-red-500">Penting:</strong> Beberapa pemindai QR Code mungkin hanya menampilkan teks URL. Anda mungkin perlu mengetuk teks tersebut secara manual untuk membuka browser.
+        </p>
+    </div>
+
+    <!-- Image Display Section -->
+    <div id="imageDisplaySection" class="image-display-container hidden">
+        <img id="displayImage" src="" alt="Gambar yang Dipindai" class="hidden">
+        <p id="placeholderText" class="placeholder-text"></p>
+    </div>
+
+    <script>
+        // Deklarasikan variabel qrcode di scope global
+        let qrcode;
+
+        // Fungsi untuk membuat QR Code dari URL gambar
+        function generateQRCode() {
+            const imageUrl = document.getElementById('imageUrlInput').value.trim(); // Ambil nilai input URL gambar
+
+            if (!imageUrl) {
+                // Tampilkan pesan jika URL gambar kosong
+                document.getElementById('placeholderText').textContent = "Harap masukkan URL gambar yang valid.";
+                document.getElementById('placeholderText').classList.remove('hidden');
+                document.getElementById('displayImage').classList.add('hidden');
+                return;
+            }
+
+            // Konstruksi URL yang akan di-encode dalam QR Code
+            // Ini akan mengarahkan kembali ke halaman ini sendiri, tetapi dengan parameter 'url'
+            const currentBaseUrl = window.location.origin + window.location.pathname;
+            const qrContent = `${currentBaseUrl}?url=${encodeURIComponent(imageUrl)}`;
+
+            console.log("URL yang akan dimasukkan ke QR Code:", qrContent); // Log untuk debugging
+
+            try {
+                if (qrcode) { // Pastikan qrcode sudah diinisialisasi
+                    qrcode.makeCode(qrContent); // Buat QR Code
+                    document.getElementById('qrcode').classList.remove('hidden'); // Tampilkan div QR Code
+                } else {
+                    console.error("QR Code object not initialized.");
+                    document.getElementById('placeholderText').textContent = "Terjadi kesalahan inisialisasi QR Code.";
+                    document.getElementById('placeholderText').classList.remove('hidden');
+                    document.getElementById('displayImage').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error("Error generating QR code:", error);
+                document.getElementById('placeholderText').textContent = "Terjadi kesalahan saat membuat QR Code. Pastikan URL valid.";
+                document.getElementById('placeholderText').classList.remove('hidden');
+                document.getElementById('displayImage').classList.add('hidden');
+            }
+        }
+
+        // Fungsi yang dijalankan saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inisialisasi QR Code di sini setelah DOM siap dan pustaka dimuat
+            // Pastikan elemen 'qrcode' ada sebelum mencoba menginisialisasi
+            const qrcodeElement = document.getElementById("qrcode");
+            if (qrcodeElement) {
+                qrcode = new QRCode(qrcodeElement, {
+                    width: 250, // Lebar QR Code
+                    height: 250, // Tinggi QR Code
+                    colorDark : "#000000", // Warna gelap QR Code
+                    colorLight : "#ffffff", // Warna terang QR Code
+                    correctLevel : QRCode.CorrectLevel.H // Tingkat koreksi kesalahan (L, M, Q, H)
+                });
+                // Berikan pesan awal pada QR Code generator
+                if (!new URLSearchParams(window.location.search).get('url')) {
+                    qrcode.makeCode("Tempel URL gambar untuk membuat QR Code.");
+                }
+            } else {
+                console.warn("Elemen dengan ID 'qrcode' tidak ditemukan. Generator QR Code tidak akan berfungsi.");
+            }
+
+
+            const params = new URLSearchParams(window.location.search); // Ambil parameter URL
+            const imageUrlParam = params.get('url'); // Dapatkan nilai parameter 'url'
+
+            const qrGeneratorSection = document.getElementById('qrGeneratorSection');
+            const imageDisplaySection = document.getElementById('imageDisplaySection');
+            const displayImage = document.getElementById('displayImage');
+            const placeholderText = document.getElementById('placeholderText');
+
+            if (imageUrlParam) {
+                // Jika ada parameter 'url', tampilkan bagian tampilan gambar
+                qrGeneratorSection.classList.add('hidden');
+                imageDisplaySection.classList.remove('hidden');
+
+                displayImage.src = imageUrlParam; // Atur sumber gambar
+                displayImage.classList.remove('hidden'); // Tampilkan gambar
+                placeholderText.classList.add('hidden'); // Sembunyikan placeholder
+
+                // Tangani kesalahan pemuatan gambar
+                displayImage.onerror = function() {
+                    displayImage.classList.add('hidden');
+                    placeholderText.textContent = "Gagal memuat gambar. Pastikan URL gambar benar dan dapat diakses publik.";
+                    placeholderText.classList.remove('hidden');
+                };
+            } else {
+                // Jika tidak ada parameter 'url', tampilkan bagian pembuat QR Code
+                qrGeneratorSection.classList.remove('hidden');
+                imageDisplaySection.classList.add('hidden');
+                // Sembunyikan QR code awal hanya jika kita berada di mode generator
+                if (qrcodeElement) { // Pastikan elemen qrcode ada sebelum menyembunyikannya
+                   // qrcode.clear(); // Hapus konten QR code awal jika tidak ada URL
+                    document.getElementById('qrcode').classList.add('hidden'); // Sembunyikan div QR Code
+                }
+            }
+        });
+    </script>
+</body>
+</html>
